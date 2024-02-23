@@ -4,68 +4,97 @@ using UnityEngine;
 
 public class PuckMovementController : MonoBehaviour
 {   
-    public bool dev = false; // set true to enable dev puck control
-    public bool hDir = true;
-    public bool vDir = true;
+    private GameController gameController;
+    private GameUIController uiController;
     public bool moving = false;
-    public float speed = 2;
-    private Rigidbody2D rb2d;
-    private float[] directions = { 45f, 135f, 225f, 315f };
+    public float maxSpeed;
+    public float speed;
+    public float defaultSpeed;
 
-    static Vector2 START_LOCATION = new Vector2(0, -4);
+    private Transform paddleTransform;
+    private Rigidbody2D rb2d;
+    private Vector3 tempVelocity;
+    
+    static Vector2 START_LOCATION = new Vector2(0, -4.3f);
 
     // Start is called before the first frame update
     void Start()
     {
         rb2d = gameObject.GetComponent<Rigidbody2D>();
+        gameController = GameObject.Find("GameManager").GetComponent<GameController>();
+        uiController = GameObject.Find("GameManager").GetComponent<GameUIController>();
+        paddleTransform = GameObject.Find("Paddle").GetComponent<Transform>();
         Reset();
+    }
+
+    // Physics calc here
+    void FixedUpdate() {
+        // Enforce velocity components to move exactly 45 degrees
+        if (gameController.Running() && !gameController.Paused() && moving) {
+            float x, y;
+            if (rb2d.velocity.x > 0) {
+                x = speed;
+            } else {
+                x = -speed;
+            }
+            if (rb2d.velocity.y > 0) {
+                y = speed;
+            } else {
+                y = -speed;
+            }
+            rb2d.velocity = new Vector2(x, y);
+        }
+    }
+
+    public void Freeze() {
+        tempVelocity = rb2d.velocity;
+        rb2d.velocity = Vector3.zero;
+    }
+
+    public void Unfreeze() {
+        if (tempVelocity != Vector3.zero) {
+            rb2d.velocity = tempVelocity;
+            tempVelocity = Vector3.zero;
+        }   
     }
 
     // Update is called once per frame
     void Update()
     {   
-        if (!moving && Input.GetMouseButtonDown(0)) Launch();
-
-        // Old movement system before switching to physics engine
-        // if (moving) {
-        //     transform.Translate(new Vector3(1, 0, 0) * speed * Time.deltaTime);
-            
-        //     float dir = 0f;
-        //     if (vDir && hDir) {
-        //         dir = directions[0];
-        //     } else if (vDir && !hDir) {
-        //         dir = directions[1];
-        //     } else if (!vDir && hDir) {
-        //         dir = directions[3];
-        //     } else if (!vDir && !vDir) {
-        //         dir = directions[2];
-        //     }
-        //     transform.eulerAngles = new Vector3(0, 0, dir);
-        // }
-        
-        // if (dev) {
-        //     if (Input.GetKeyDown("[")) FlipHorizontal();
-        //     if (Input.GetKeyDown("]")) FlipVertical();
-        // }
-        
+        if (gameController.Paused()) { return; }
+        if (!moving && Input.GetMouseButtonDown(0)) Launch(-1);
+        if (!moving && Input.GetMouseButtonDown(1)) Launch(1);
+        if (!moving) {
+            transform.position = new Vector2(paddleTransform.position.x, transform.position.y);
+        } 
     }
 
-    public void FlipHorizontal() {
-        hDir = !hDir;
-    }
-
-    public void FlipVertical() {
-        vDir = !vDir;
-    }
-
-    public void Launch() {
-        moving = true;
-        rb2d.velocity = new Vector2(speed, speed);
+    public void Launch(int dir) {
+        if (gameController.Running() && !gameController.Paused()) { // Ensure game is not in win or fail state or paused
+            uiController.ClearCenter();
+            moving = true;
+            float xV = speed * dir;
+            rb2d.velocity = new Vector2(xV, speed);
+        }
     }
 
     public void Reset() {
         moving = false;
         rb2d.velocity = Vector2.zero;
         transform.position = START_LOCATION;
+    }
+
+    public void IncreaseSpeed() {
+        if (speed < maxSpeed) {
+            speed += 0.5f;
+        }
+    }
+
+    public bool AtMaxSpeed() {
+        return speed == maxSpeed;
+    }
+
+    public void ResetSpeed() {
+        speed = defaultSpeed;
     }
 }

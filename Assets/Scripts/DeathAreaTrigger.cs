@@ -4,24 +4,16 @@ using UnityEngine;
 
 public class DeathAreaTrigger : MonoBehaviour
 {   
+    GameController gameController;
 
-    PuckMovementController puckMovementController;
-
-    // Start is called before the first frame update
     void Start()
     {
-        puckMovementController = GameObject.Find("Puck").GetComponent<PuckMovementController>();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        gameController = GameObject.Find("GameManager").GetComponent<GameController>();
     }
 
     void OnTriggerEnter2D(Collider2D other) {
         if (other.CompareTag("puck")) {
-            puckMovementController.Reset();
+            gameController.LoseLife();
         }
     }
 }
